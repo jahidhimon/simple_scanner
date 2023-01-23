@@ -1,0 +1,4 @@
+testVenv/
+.projectile
+__pycache__
+others.py
