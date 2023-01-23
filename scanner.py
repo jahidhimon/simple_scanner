@@ -7,7 +7,7 @@ from termcolor import colored
 
 
 class Scanner:
-    """Scan all the port by vanilla method.
+    """Scan ports of ports by using many threads.
 
     Ports will be given as a list,
     if thread_c is not given default is 100.
