@@ -2,6 +2,7 @@
 
 import socket
 import threading
+import re
 from datetime import datetime
 from termcolor import colored
 
@@ -114,4 +115,24 @@ class Scanner:
         for thread in threads:
             thread.join(timeout=70)
         print()
-        print(*self.__open_ports, sep="\n")
+        self._printPorts()
+
+    def _printPorts(self):
+        """Read port infos from /etc/services and print open port infos."""
+        with open("/etc/services", "r") as f:
+            next(f)
+            next(f)             # /etc/services has two useless lines at top
+            info_dict = {}
+            for line in f:
+                r = re.compile("[ \t/]+")
+                prog, port, prot = r.split(line[:-1])
+                info = f"\t{prot} -- {prog}"
+                if info_dict.get(int(port)) is None:
+                    info_dict[int(port)] = [info]
+                else:
+                    info_dict[int(port)].append(info)
+
+        for port in self.__open_ports:
+            infos = info_dict[port]
+            print(f"{port}:")
+            print(*infos, sep="\n")
