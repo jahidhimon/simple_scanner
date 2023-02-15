@@ -3,6 +3,7 @@
 import socket
 import threading
 import re
+from dataclasses import dataclass
 from datetime import datetime
 from termcolor import colored
 
@@ -43,7 +44,7 @@ class Scanner:
         print(colored("-" * 50, 'green'))
         self.print_status()
 
-    def print_status(self):
+    def print_status(self) -> None:
         """Print the status of the scanner.
 
         Print how many ports scanned and how many ports found.
@@ -58,7 +59,7 @@ class Scanner:
         print(f"\r{op_str}, {sp_str}, {dur_str}", end="")
 
     @classmethod
-    def read_ports_from_file(cls, filename):
+    def read_ports_from_file(cls, filename: str) -> list[int]:
         r"""Read and return a list from filename, seperated by ' ' or '\n'."""
         ports = []
         with open(filename, 'r') as f:
@@ -66,7 +67,7 @@ class Scanner:
             ports = data.split()
         return [int(x) for x in ports]
 
-    def __port_scanner(self, port):
+    def __port_scanner(self, port: int) -> bool:
         """Scan a specific port.
 
         If the port is connectable the function returns True.
@@ -87,14 +88,14 @@ class Scanner:
         except socket.error:
             print("\nServer not responding!!!")
 
-    def __list_scanner(self, lst):
+    def __list_scanner(self, lst: list[int]) -> None:
         """Scan a range of port using self.__port_scanner method."""
         for p in lst:
             if self.__port_scanner(p):
                 self.__open_ports.append(p)
             self.print_status()
 
-    def scan(self):
+    def scan(self) -> None:
         """Scan the list __ports."""
         threads = []
         part_size = int(len(self.__ports) / self.__thread_count)
@@ -117,22 +118,38 @@ class Scanner:
         print()
         self._printPorts()
 
-    def _printPorts(self):
+    def _printPorts(self) -> None:
         """Read port infos from /etc/services and print open port infos."""
-        with open("/etc/services", "r") as f:
-            next(f)
-            next(f)             # /etc/services has two useless lines at top
-            info_dict = {}
-            for line in f:
-                r = re.compile("[ \t/]+")
-                prog, port, prot = r.split(line[:-1])
-                info = f"\t{prot} -- {prog}"
-                if info_dict.get(int(port)) is None:
-                    info_dict[int(port)] = [info]
-                else:
-                    info_dict[int(port)].append(info)
 
+        @dataclass
+        class PortInfo:
+            protocol: str
+            usage: str
+
+            def __repr__(self):
+                prot_info = colored(self.protocol, 'dark_grey')
+                use_info = colored(self.usage, 'light_yellow')
+                return f"\t{prot_info} {use_info}"
+
+        def parsePortInfo() -> dict:
+            """Parse /etc/services and return a dictionary."""
+            info_dict = {}
+            with open("/etc/services", "r") as f:
+                next(f)
+                next(f)             # /etc/services top has two useless lines
+                info_dict = {}
+                r = re.compile("[ \t/]+")
+                for line in f:
+                    prog, port, prot = r.split(line[:-1])
+                    info = PortInfo(protocol=prot, usage=prog)
+                    if info_dict.get(int(port)) is None:
+                        info_dict[int(port)] = [info]
+                    else:
+                        info_dict[int(port)].append(info)
+            return info_dict
+
+        info_dict = parsePortInfo()
         for port in self.__open_ports:
             infos = info_dict[port]
-            print(f"{port}:")
+            print(colored(f"{port}:", 'cyan'))
             print(*infos, sep="\n")
