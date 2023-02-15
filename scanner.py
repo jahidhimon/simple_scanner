@@ -15,7 +15,7 @@ class Scanner:
     if thread_c is not given default is 100.
     """
 
-    def __init__(self, url: str, ports: list, thread_c=100):
+    def __init__(self, url: str, ports: list, thread_c=100, verbose=True):
         """Initialize the scanner class."""
         # Validation of arguments
         assert url != "", "Url cannot be empty."
@@ -25,22 +25,30 @@ class Scanner:
         assert ip != socket.herror, f"URL {url} is not valid"
 
         # Assign to self object
+        self.__verbose = verbose
         self.__target_ip_addr = ip
         self.__target_url = url
         self.__ports = ports
         self.__p_scanned = 0
-        self.__open_ports = []
+        self._open_ports = []
         self.__start_time = datetime.now()
         self.__thread_count = thread_c
 
-        # Printing Intro
+        if self.__verbose:
+            self.scanner_intro_info()
+
+    def scanner_intro_info(self):
+        """Print Intro of Scanner instance."""
         formatted_time = self.__start_time.strftime("%d/%m/%Y, %H:%M:%S")
         print(colored("-" * 50, 'green'))
-        print(f"{colored('Scanning Target', 'yellow')}: {url} ", end="")
-        print(f"({colored(ip, 'blue')})")
-        print(f"{colored('Scanning started at', 'yellow')}: {formatted_time}")
-        print(f"{colored('Total Ports', 'yellow')}: {len(ports)} ", end="")
-        print(f"{colored('Threads Count', 'yellow')}: {thread_c}")
+        init_info = (
+            f"{colored('Scanning Target', 'yellow')}: {self.__target_url} "
+            f"({colored(self.__target_ip_addr, 'blue')})\n"
+            f"{colored('Scanning started at', 'yellow')}: {formatted_time}\n"
+            f"{colored('Total Ports', 'yellow')}: {len(self.__ports)} "
+            f"{colored('Threads Count', 'yellow')}: {self.__thread_count}"
+        )
+        print(init_info)
         print(colored("-" * 50, 'green'))
         self.print_status()
 
@@ -50,7 +58,7 @@ class Scanner:
         Print how many ports scanned and how many ports found.
         Also print the time of the scan
         """
-        op_str = f"Open Ports Found: {len(self.__open_ports)}"
+        op_str = f"Open Ports Found: {len(self._open_ports)}"
         sp_str = f"Scanned Ports: {self.__p_scanned}"
         now = datetime.now()
         dur = (now - self.__start_time).total_seconds()
@@ -92,8 +100,9 @@ class Scanner:
         """Scan a range of port using self.__port_scanner method."""
         for p in lst:
             if self.__port_scanner(p):
-                self.__open_ports.append(p)
-            self.print_status()
+                self._open_ports.append(p)
+            if self.__verbose:
+                self.print_status()
 
     def scan(self) -> None:
         """Scan the list __ports."""
@@ -115,8 +124,10 @@ class Scanner:
 
         for thread in threads:
             thread.join(timeout=70)
-        print()
-        self._printPorts()
+
+        if self.__verbose:
+            print()
+            self._printPorts()
 
     def _printPorts(self) -> None:
         """Read port infos from /etc/services and print open port infos."""
@@ -129,7 +140,7 @@ class Scanner:
             def __repr__(self):
                 prot_info = colored(self.protocol, 'dark_grey')
                 use_info = colored(self.usage, 'light_yellow')
-                return f"\t{prot_info} {use_info}"
+                return f"\t{prot_info:} {use_info}"
 
         def parsePortInfo() -> dict:
             """Parse /etc/services and return a dictionary."""
@@ -149,7 +160,7 @@ class Scanner:
             return info_dict
 
         info_dict = parsePortInfo()
-        for port in self.__open_ports:
+        for port in self._open_ports:
             infos = info_dict[port]
             print(colored(f"{port}:", 'cyan'))
             print(*infos, sep="\n")
